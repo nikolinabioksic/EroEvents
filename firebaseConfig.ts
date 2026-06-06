@@ -2,7 +2,8 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBPrpv3BFw_OPlfrTTbUsszFmk3MVdIBgg",
+  // Čitamo ključ iz skrivene .env datoteke koju si napravio
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: "eroevents-f44ad.firebaseapp.com",
   projectId: "eroevents-f44ad",
   storageBucket: "eroevents-f44ad.firebasestorage.app",
