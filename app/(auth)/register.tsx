@@ -1,9 +1,11 @@
-import { Text, View } from "react-native";
+import { router } from "expo-router";
+import RegisterScreen from "../../src/screens/RegisterScreen";
 
-export default function RegisterScreen() {
+export default function RegisterPage() {
   return (
-    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text>Ekran za registraciju (Ovdje kuca Član 3)</Text>
-    </View>
+    <RegisterScreen
+      onRegister={async () => {}}
+      onNavigateToLogin={() => router.push("/login" as any)}
+    />
   );
 }
