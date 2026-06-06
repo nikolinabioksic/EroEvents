@@ -30,7 +30,7 @@ export default function LoginScreen() {
     if (result.success) {
       Alert.alert("Uspjeh", "Uspješno ste se prijavili!");
       // Preusmjeravanje na Home ekran (Karlova kućica u (tabs))
-      router.replace("/(tabs)/home"); 
+      router.replace("/(tabs)" as any); 
     } else {
       Alert.alert("Prijava neuspješna", result.error || "Pokušajte ponovno.");
     }
