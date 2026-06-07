@@ -1,14 +1,23 @@
 import { useRouter } from "expo-router";
+import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { logoutUser } from "../../authService";
 import { deleteEvent, getEvents } from "../../eventService";
-import { auth } from "../../firebaseConfig"; // Ovdje je taj ključni 'auth' koji je falio!
+import { auth } from "../../firebaseConfig";
 
 export default function HomeScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUserId(user ? user.uid : null);
+    });
+    return unsubscribe;
+  }, []);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -59,8 +68,7 @@ export default function HomeScreen() {
   };
 
   const renderEventItem = ({ item }: { item: any }) => {
-    // Vraćena prava provjera vlasništva s ispravno uvezenim 'auth'
-    const isOwner = item.userId === auth.currentUser?.uid;
+    const isOwner = item.userId === currentUserId;
 
     return (
       <View style={styles.card}>
@@ -96,7 +104,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.welcomeText}>EroEvents 🎉</Text>
-      <Text style={styles.infoText}>Aktualni događaji u Hercegovini</Text>
+      <Text style={styles.infoText}>Pregled aktualnih događaja u Hercegovini 🚀</Text>
 
       <TouchableOpacity style={styles.addButton} onPress={() => router.push("/add-event")}>
         <Text style={styles.addButtonText}>➕ Dodaj novi događaj</Text>
@@ -132,25 +140,20 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 15, color: "#6c757d", marginBottom: 20 },
   addButton: { width: "100%", height: 50, backgroundColor: "#34C759", justifyContent: "center", alignItems: "center", borderRadius: 10, marginBottom: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
   addButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-  
   listContainer: { paddingBottom: 20 },
-  
   card: { backgroundColor: "#fff", borderRadius: 12, marginBottom: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: "#e9ecef", overflow: "hidden" },
   cardImage: { width: "100%", height: 200, resizeMode: "cover" },
   noImagePlaceholder: { width: "100%", height: 150, backgroundColor: "#e0e0e0", justifyContent: "center", alignItems: "center" },
   noImageText: { color: "#777", fontSize: 14 },
   cardContent: { padding: 16 },
-  
   cardTitle: { fontSize: 18, fontWeight: "bold", color: "#212529", marginBottom: 8 },
   cardDetailsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   cardLocation: { fontSize: 14, fontWeight: "600", color: "#495057" },
   cardDate: { fontSize: 14, color: "#007AFF", fontWeight: "600" },
   cardDescription: { fontSize: 14, color: "#6c757d", lineHeight: 20 },
   emptyText: { textAlign: "center", color: "#6c757d", marginTop: 40, fontSize: 16 },
-
   deleteButton: { marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#eee", alignItems: "flex-end" },
   deleteButtonText: { color: "#FF3B30", fontSize: 14, fontWeight: "600" },
-
   logoutButton: { width: "100%", height: 48, backgroundColor: "#FF3B30", justifyContent: "center", alignItems: "center", borderRadius: 10, marginTop: 10 },
   logoutButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });
