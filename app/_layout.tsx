@@ -3,8 +3,10 @@ import { Stack } from "expo-router";
 export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {/* Uklonili smo (auth) dok to ne posložite kako spada, aplikacija će sada šutjeti i raditi. */}
+      {/* Ovdje samo kažemo Expu koji glavni folderi i ekrani postoje */}
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="add-event" />
     </Stack>
   );
 }

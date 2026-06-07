@@ -47,7 +47,6 @@ export default function AddEventScreen() {
       return;
     }
 
-    // PRAVA PROVJERA - ako korisnik nije prijavljen, prekidamo
     const currentUser = auth.currentUser;
     if (!currentUser) {
       Alert.alert("Greška", "Morate biti prijavljeni da biste dodali događaj.");
@@ -57,7 +56,6 @@ export default function AddEventScreen() {
     setLoading(true);
 
     try {
-      // 1. Šaljemo sliku na Supabase Storage
       const uploadedImageUrl = await uploadEventPoster(imageUri);
 
       const eventData = {
@@ -65,11 +63,10 @@ export default function AddEventScreen() {
         location,
         date,
         description,
-        userId: currentUser.uid, // Koristimo PRAVI ID prijavljenog korisnika
+        userId: currentUser.uid,
         imageUrl: uploadedImageUrl,
       };
 
-      // 3. Slanje u Firebase
       const result = await createEvent(eventData);
       setLoading(false);
 
@@ -153,15 +150,15 @@ export default function AddEventScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: "#fff", flexGrow: 1 },
-  header: { fontSize: 24, fontWeight: "bold", marginBottom: 20, color: "#333", textAlign: "center" },
-  label: { fontSize: 16, fontWeight: "600", color: "#555", marginBottom: 5 },
-  input: { height: 50, borderWidth: 1, borderColor: "#ccc", borderRadius: 8, paddingHorizontal: 15, marginBottom: 15, fontSize: 16 },
-  textArea: { height: 100, paddingTop: 10, textAlignVertical: "top" },
-  imagePickerButton: { height: 45, backgroundColor: "#007AFF", justifyContent: "center", alignItems: "center", borderRadius: 8, marginBottom: 15 },
-  imagePickerButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  previewContainer: { alignItems: "center", marginBottom: 15, borderWidth: 1, borderColor: "#eee", borderRadius: 8, padding: 5 },
-  previewImage: { width: 150, height: 187, borderRadius: 6, resizeMode: "cover" },
-  button: { height: 50, backgroundColor: "#34C759", justifyContent: "center", alignItems: "center", borderRadius: 8, marginTop: 15 },
+  container: { padding: 20, paddingTop: 60, backgroundColor: "#fff", flexGrow: 1 },
+  header: { fontSize: 26, fontWeight: "bold", marginBottom: 30, color: "#1a1a1a", textAlign: "center" },
+  label: { fontSize: 15, fontWeight: "600", color: "#495057", marginBottom: 8 },
+  input: { height: 50, borderWidth: 1, borderColor: "#ced4da", borderRadius: 10, paddingHorizontal: 15, marginBottom: 20, fontSize: 16, backgroundColor: "#f8f9fa" },
+  textArea: { height: 120, paddingTop: 15, textAlignVertical: "top" },
+  imagePickerButton: { height: 50, backgroundColor: "#007AFF", justifyContent: "center", alignItems: "center", borderRadius: 10, marginBottom: 20 },
+  imagePickerButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  previewContainer: { alignItems: "center", marginBottom: 20, padding: 5, backgroundColor: "#f8f9fa", borderRadius: 12, borderWidth: 1, borderColor: "#e9ecef" },
+  previewImage: { width: 160, height: 200, borderRadius: 8, resizeMode: "cover" },
+  button: { height: 55, backgroundColor: "#34C759", justifyContent: "center", alignItems: "center", borderRadius: 10, marginTop: 10, marginBottom: 30 },
   buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
 });
