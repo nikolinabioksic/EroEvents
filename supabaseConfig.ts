@@ -1,10 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from '@supabase/supabase-js';
 
-// Tvoji stvarni i točni podaci s platforme
-const supabaseUrl = "https://llmexboxrnuztscdrjnl.supabase.co"; 
-const supabaseAnonKey = "sb_publishable_-PNF2lbNOJOOyJnAStVL7w_QTLwagbr"; 
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const SUPABASE_BUCKET_NAME = 'event-posters';
 
-// Naziv bucketa koji smo kreirali u prvom koraku
-export const SUPABASE_BUCKET_NAME = "event-posters";
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
