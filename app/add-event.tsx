@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
-import { createEvent } from "../eventService"; // Provjeri putanju do korijena
+import { createEvent } from "../eventService";
 import { auth } from "../firebaseConfig";
 
 export default function AddEventScreen() {
