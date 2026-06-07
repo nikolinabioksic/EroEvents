@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   // Čitamo ključ iz skrivene .env datoteke koju si napravio
@@ -16,3 +17,4 @@ const app = initializeApp(firebaseConfig);
 
 // Pokretanje i izvoz autentifikacije za aplikaciju
 export const auth = getAuth(app);
+export const db = getFirestore(app);
