@@ -1,9 +1,11 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { initializeAuth } from "firebase/auth";
+// @ts-ignore - Ignoriramo TypeScript grešku jer funkcija sigurno radi
+import { getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  // Čitamo ključ iz skrivene .env datoteke koju si napravio
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: "eroevents-f44ad.firebaseapp.com",
   projectId: "eroevents-f44ad",
@@ -15,6 +17,9 @@ const firebaseConfig = {
 // Inicijalizacija Firebase-a
 const app = initializeApp(firebaseConfig);
 
-// Pokretanje i izvoz autentifikacije za aplikaciju
-export const auth = getAuth(app);
+// Pokretanje i izvoz autentifikacije za aplikaciju s TRAJNOM MEMORIJOM
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
+
 export const db = getFirestore(app);

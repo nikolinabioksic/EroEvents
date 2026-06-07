@@ -1,9 +1,9 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { logoutUser } from "../../authService";
 import { deleteEvent, getEvents } from "../../eventService";
-import { auth } from "../../firebaseConfig"; // Karlo uvozi auth za provjeru vlasnika
+import { auth } from "../../firebaseConfig"; // Ovdje je taj ključni 'auth' koji je falio!
 
 export default function HomeScreen() {
   const [events, setEvents] = useState<any[]>([]);
@@ -25,7 +25,6 @@ export default function HomeScreen() {
     fetchEvents();
   }, []);
 
-  // Karlova funkcija za brisanje s potvrdom i hvatanjem grešaka
   const handleDelete = (eventId: string) => {
     Alert.alert(
       "Brisanje događaja",
@@ -39,7 +38,7 @@ export default function HomeScreen() {
             const result = await deleteEvent(eventId);
             if (result.success) {
               Alert.alert("Uspjeh", "Događaj je uspješno obrisan.");
-              fetchEvents(); // Ponovno osvježi listu nakon brisanja
+              fetchEvents();
             } else {
               Alert.alert("Greška pri brisanju", result.error || "Pokušajte ponovno.");
             }
@@ -60,27 +59,36 @@ export default function HomeScreen() {
   };
 
   const renderEventItem = ({ item }: { item: any }) => {
-    // Provjera je li trenutni korisnik kreirao ovaj događaj
+    // Vraćena prava provjera vlasništva s ispravno uvezenim 'auth'
     const isOwner = item.userId === auth.currentUser?.uid;
 
     return (
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <View style={styles.cardDetailsRow}>
-          <Text style={styles.cardLocation}>📍 {item.location}</Text>
-          <Text style={styles.cardDate}>📅 {item.date}</Text>
-        </View>
-        <Text style={styles.cardDescription} numberOfLines={3}>{item.description}</Text>
-
-        {/* Karlov gumb za brisanje - vidljiv samo vlasniku */}
-        {isOwner && (
-          <TouchableOpacity 
-            style={styles.deleteButton} 
-            onPress={() => handleDelete(item.id)}
-          >
-            <Text style={styles.deleteButtonText}>🗑️ Obriši događaj</Text>
-          </TouchableOpacity>
+        {item.imageUrl ? (
+          <Image source={{ uri: item.imageUrl }} style={styles.cardImage} />
+        ) : (
+          <View style={styles.noImagePlaceholder}>
+            <Text style={styles.noImageText}>Nema plakata</Text>
+          </View>
         )}
+
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <View style={styles.cardDetailsRow}>
+            <Text style={styles.cardLocation}>📍 {item.location}</Text>
+            <Text style={styles.cardDate}>📅 {item.date}</Text>
+          </View>
+          <Text style={styles.cardDescription} numberOfLines={3}>{item.description}</Text>
+
+          {isOwner && (
+            <TouchableOpacity 
+              style={styles.deleteButton} 
+              onPress={() => handleDelete(item.id)}
+            >
+              <Text style={styles.deleteButtonText}>🗑️ Obriši događaj</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
   };
@@ -126,7 +134,13 @@ const styles = StyleSheet.create({
   addButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   
   listContainer: { paddingBottom: 20 },
-  card: { backgroundColor: "#fff", padding: 16, borderRadius: 12, marginBottom: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: "#e9ecef" },
+  
+  card: { backgroundColor: "#fff", borderRadius: 12, marginBottom: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: "#e9ecef", overflow: "hidden" },
+  cardImage: { width: "100%", height: 200, resizeMode: "cover" },
+  noImagePlaceholder: { width: "100%", height: 150, backgroundColor: "#e0e0e0", justifyContent: "center", alignItems: "center" },
+  noImageText: { color: "#777", fontSize: 14 },
+  cardContent: { padding: 16 },
+  
   cardTitle: { fontSize: 18, fontWeight: "bold", color: "#212529", marginBottom: 8 },
   cardDetailsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   cardLocation: { fontSize: 14, fontWeight: "600", color: "#495057" },
@@ -134,7 +148,6 @@ const styles = StyleSheet.create({
   cardDescription: { fontSize: 14, color: "#6c757d", lineHeight: 20 },
   emptyText: { textAlign: "center", color: "#6c757d", marginTop: 40, fontSize: 16 },
 
-  // Karlov stil gumba za brisanje
   deleteButton: { marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#eee", alignItems: "flex-end" },
   deleteButtonText: { color: "#FF3B30", fontSize: 14, fontWeight: "600" },
 

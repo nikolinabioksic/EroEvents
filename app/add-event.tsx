@@ -47,22 +47,25 @@ export default function AddEventScreen() {
       return;
     }
 
+    // PRAVA PROVJERA - ako korisnik nije prijavljen, prekidamo
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      Alert.alert("Greška", "Morate biti prijavljeni da biste dodali događaj.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       // 1. Šaljemo sliku na Supabase Storage
       const uploadedImageUrl = await uploadEventPoster(imageUri);
 
-      // 2. Uzimamo ID korisnika ako postoji, ako ne, stavljamo testni ID da ne pukne baza
-      const currentUser = auth.currentUser;
-      const finalUserId = currentUser ? currentUser.uid : "testni_korisnik_id";
-
       const eventData = {
         title,
         location,
         date,
         description,
-        userId: finalUserId, // Zaobilazimo blokadu prijave za testiranje
+        userId: currentUser.uid, // Koristimo PRAVI ID prijavljenog korisnika
         imageUrl: uploadedImageUrl,
       };
 
