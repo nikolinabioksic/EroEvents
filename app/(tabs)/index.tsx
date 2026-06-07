@@ -2,14 +2,14 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { logoutUser } from "../../authService";
-import { getEvents } from "../../eventService";
+import { deleteEvent, getEvents } from "../../eventService";
+import { auth } from "../../firebaseConfig"; // Karlo uvozi auth za provjeru vlasnika
 
 export default function HomeScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Funkcija za dohvaćanje događaja s baze (Stanin dio)
   const fetchEvents = async () => {
     setLoading(true);
     const result = await getEvents();
@@ -21,10 +21,33 @@ export default function HomeScreen() {
     setLoading(false);
   };
 
-  // Pokreni dohvaćanje čim se ekran učita
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  // Karlova funkcija za brisanje s potvrdom i hvatanjem grešaka
+  const handleDelete = (eventId: string) => {
+    Alert.alert(
+      "Brisanje događaja",
+      "Jeste li sigurni da želite obrisati ovaj događaj?",
+      [
+        { text: "Odustani", style: "cancel" },
+        {
+          text: "Obriši",
+          style: "destructive",
+          onPress: async () => {
+            const result = await deleteEvent(eventId);
+            if (result.success) {
+              Alert.alert("Uspjeh", "Događaj je uspješno obrisan.");
+              fetchEvents(); // Ponovno osvježi listu nakon brisanja
+            } else {
+              Alert.alert("Greška pri brisanju", result.error || "Pokušajte ponovno.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleLogout = async () => {
     const result = await logoutUser();
@@ -36,29 +59,41 @@ export default function HomeScreen() {
     }
   };
 
-  // Renderiranje pojedinačne kartice događaja (Stanin dizajn kartice)
-  const renderEventItem = ({ item }: { item: any }) => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{item.title}</Text>
-      <View style={styles.cardDetailsRow}>
-        <Text style={styles.cardLocation}>📍 {item.location}</Text>
-        <Text style={styles.cardDate}>📅 {item.date}</Text>
+  const renderEventItem = ({ item }: { item: any }) => {
+    // Provjera je li trenutni korisnik kreirao ovaj događaj
+    const isOwner = item.userId === auth.currentUser?.uid;
+
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        <View style={styles.cardDetailsRow}>
+          <Text style={styles.cardLocation}>📍 {item.location}</Text>
+          <Text style={styles.cardDate}>📅 {item.date}</Text>
+        </View>
+        <Text style={styles.cardDescription} numberOfLines={3}>{item.description}</Text>
+
+        {/* Karlov gumb za brisanje - vidljiv samo vlasniku */}
+        {isOwner && (
+          <TouchableOpacity 
+            style={styles.deleteButton} 
+            onPress={() => handleDelete(item.id)}
+          >
+            <Text style={styles.deleteButtonText}>🗑️ Obriši događaj</Text>
+          </TouchableOpacity>
+        )}
       </View>
-      <Text style={styles.cardDescription} numberOfLines={3}>{item.description}</Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.welcomeText}>EroEvents 🎉</Text>
       <Text style={styles.infoText}>Aktualni događaji u Hercegovini</Text>
 
-      {/* Tvoj gumb za dodavanje novog događaja */}
       <TouchableOpacity style={styles.addButton} onPress={() => router.push("/add-event")}>
         <Text style={styles.addButtonText}>➕ Dodaj novi događaj</Text>
       </TouchableOpacity>
 
-      {/* Stanin FlatList za prikaz svih kartica dohvaćenih iz baze */}
       {loading ? (
         <ActivityIndicator size="large" color="#007AFF" style={{ flex: 1 }} />
       ) : (
@@ -69,14 +104,13 @@ export default function HomeScreen() {
           contentContainerStyle={styles.listContainer}
           style={{ width: "100%" }}
           refreshing={loading}
-          onRefresh={fetchEvents} // Povlačenje prema dolje osvježava listu
+          onRefresh={fetchEvents}
           ListEmptyComponent={
             <Text style={styles.emptyText}>Trenutno nema objavljenih događaja.</Text>
           }
         />
       )}
 
-      {/* Karlov gumb za odjavu */}
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Odjavi se</Text>
       </TouchableOpacity>
@@ -91,7 +125,6 @@ const styles = StyleSheet.create({
   addButton: { width: "100%", height: 50, backgroundColor: "#34C759", justifyContent: "center", alignItems: "center", borderRadius: 10, marginBottom: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
   addButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   
-  // Stilovi za FlatList i Stanine kartice
   listContainer: { paddingBottom: 20 },
   card: { backgroundColor: "#fff", padding: 16, borderRadius: 12, marginBottom: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: "#e9ecef" },
   cardTitle: { fontSize: 18, fontWeight: "bold", color: "#212529", marginBottom: 8 },
@@ -100,6 +133,10 @@ const styles = StyleSheet.create({
   cardDate: { fontSize: 14, color: "#007AFF", fontWeight: "600" },
   cardDescription: { fontSize: 14, color: "#6c757d", lineHeight: 20 },
   emptyText: { textAlign: "center", color: "#6c757d", marginTop: 40, fontSize: 16 },
+
+  // Karlov stil gumba za brisanje
+  deleteButton: { marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#eee", alignItems: "flex-end" },
+  deleteButtonText: { color: "#FF3B30", fontSize: 14, fontWeight: "600" },
 
   logoutButton: { width: "100%", height: 48, backgroundColor: "#FF3B30", justifyContent: "center", alignItems: "center", borderRadius: 10, marginTop: 10 },
   logoutButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
