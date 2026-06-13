@@ -6,7 +6,7 @@ import { createEvent } from "../eventService";
 import { auth } from "../firebaseConfig";
 import { uploadEventPoster } from "../imageService";
 
-export default function AddEventScreen() {
+const AddEventScreen = () => {
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
@@ -148,6 +148,8 @@ export default function AddEventScreen() {
     </ScrollView>
   );
 }
+
+export default AddEventScreen;
 
 const styles = StyleSheet.create({
   container: { padding: 20, paddingTop: 60, backgroundColor: "#fff", flexGrow: 1 },
