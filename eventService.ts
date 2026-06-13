@@ -8,6 +8,8 @@ export interface EventData {
   date: string;
   description: string;
   userId: string; // Da znamo tko je dodao događaj
+  latitude?: number;   // ? znači da nije obavezno
+  longitude?: number;  // ? znači da nije obavezno
 }
 
 /**
