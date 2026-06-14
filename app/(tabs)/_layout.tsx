@@ -7,6 +7,10 @@ export default function TabsLayout() {
         name="index" 
         options={{ title: "Početna" }} 
       />
+      <Tabs.Screen 
+        name="map" 
+        options={{ title: "Karta" }} 
+      />
     </Tabs>
   );
 }
