@@ -1,11 +1,10 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initializeApp } from "firebase/app";
-import { getAuth, initializeAuth } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { Platform } from "react-native";
 
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  apiKey: "AIzaSyBPrpv3BFw_OPlfrTTbUsszFmk3MVdIBgg",
   authDomain: "eroevents-f44ad.firebaseapp.com",
   projectId: "eroevents-f44ad",
   storageBucket: "eroevents-f44ad.firebasestorage.app",
@@ -15,14 +14,16 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Na webu koristimo getAuth, na mobitelu initializeAuth s AsyncStorage
-let auth;
+let auth: any;
+
 if (Platform.OS === "web") {
   auth = getAuth(app);
 } else {
+  const { initializeAuth } = require("firebase/auth");
   const { getReactNativePersistence } = require("firebase/auth");
+  const AsyncStorage = require("@react-native-async-storage/async-storage").default;
   auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
+    persistence: getReactNativePersistence(AsyncStorage),
   });
 }
 
