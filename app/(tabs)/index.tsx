@@ -1,3 +1,4 @@
+import * as Calendar from "expo-calendar/legacy";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
@@ -27,14 +28,10 @@ export default function HomeScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const router = useRouter();
 
-  // Registriramo push notifikacije pri prvom pokretanju
   useEffect(() => {
     registerForPushNotifications();
   }, []);
 
-  // Pokrećemo geofencing nad učitanim događajima
-  // Napomena: događaji trebaju imati latitude/longitude polja u bazi
-  // da bi geofencing radio. Ako polje ne postoji, preskače se taj događaj.
   useGeofencing(events as EventWithCoords[]);
 
   useEffect(() => {
@@ -82,7 +79,6 @@ export default function HomeScreen() {
     );
   };
 
-  // Share API — dijeli događaj putem WhatsAppa, Instagrama i ostalih aplikacija
   const handleShare = async (item: any) => {
     try {
       const shareMessage =
@@ -100,6 +96,61 @@ export default function HomeScreen() {
       Alert.alert("Greška", "Dijeljenje nije uspjelo. Pokušajte ponovno.");
     }
   };
+
+const handleAddToCalendar = async (item: any) => {
+  try {
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Dozvola odbijena", "Potreban je pristup kalendaru.");
+      return;
+    }
+
+    // Parsiramo datum
+    let startDate = new Date();
+    try {
+      const dateMatch = item.date.match(/(\d{1,2})\.(\d{1,2})\.?(\d{4})?/);
+      const timeMatch = item.date.match(/(\d{1,2}):(\d{2})/);
+      if (dateMatch) {
+        const day = parseInt(dateMatch[1]);
+        const month = parseInt(dateMatch[2]) - 1;
+        const year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
+        const hours = timeMatch ? parseInt(timeMatch[1]) : 20;
+        const minutes = timeMatch ? parseInt(timeMatch[2]) : 0;
+        startDate = new Date(year, month, day, hours, minutes);
+      }
+    } catch {}
+
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+
+    // Android specifično - trebamo pronaći kalendar drugačije
+    const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+    
+    // Tražimo lokalni kalendar ili prvi dostupan
+    const localCalendar = calendars.find(cal => 
+      cal.allowsModifications && 
+      (cal.type === Calendar.CalendarType.LOCAL || cal.accessLevel === Calendar.CalendarAccessLevel.OWNER)
+    ) || calendars.find(cal => cal.allowsModifications);
+
+    if (!localCalendar) {
+      Alert.alert("Greška", "Nije pronađen kalendar. Provjerite imate li instaliranu aplikaciju Kalendar.");
+      return;
+    }
+
+    await Calendar.createEventAsync(localCalendar.id, {
+      title: item.title,
+      location: item.location,
+      notes: item.description,
+      startDate,
+      endDate,
+      timeZone: "Europe/Sarajevo",
+    });
+
+    Alert.alert("Uspjeh", `"${item.title}" je dodan u kalendar! 📅`);
+  } catch (error: any) {
+    console.log("Kalendar greška:", error);
+    Alert.alert("Greška", "Nije moguće dodati događaj u kalendar. " + error.message);
+  }
+};
 
   const handleLogout = async () => {
     const result = await logoutUser();
@@ -134,13 +185,19 @@ export default function HomeScreen() {
             {item.description}
           </Text>
 
-          {/* Akcijski gumbi — Share uvijek vidljiv, Obriši samo vlasniku */}
           <View style={styles.cardActions}>
             <TouchableOpacity
               style={styles.shareButton}
               onPress={() => handleShare(item)}
             >
               <Text style={styles.shareButtonText}>↗️ Podijeli</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.calendarButton}
+              onPress={() => handleAddToCalendar(item)}
+            >
+              <Text style={styles.calendarButtonText}>📅 Kalendar</Text>
             </TouchableOpacity>
 
             {isOwner && (
@@ -264,6 +321,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   shareButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  calendarButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: "#FF9500",
+    borderRadius: 8,
+  },
+  calendarButtonText: { color: "#fff", fontSize: 14, fontWeight: "600" },
   deleteButton: {
     paddingVertical: 6,
     paddingHorizontal: 14,
