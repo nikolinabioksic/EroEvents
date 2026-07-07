@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "./firebaseConfig";
 
 // Definiramo kako naš događaj treba izgledati (TypeScript interfejs)
@@ -8,8 +8,10 @@ export interface EventData {
   date: string;
   description: string;
   userId: string; // Da znamo tko je dodao događaj
-  latitude?: number;   // ? znači da nije obavezno
-  longitude?: number;  // ? znači da nije obavezno
+  imageUrl?: string;   // Opcionalno za plakat
+  eventLink?: string;  // Opcionalno za Instagram/Maps link
+  latitude?: number;   // Opcionalno
+  longitude?: number;  // Opcionalno
 }
 
 /**
@@ -61,6 +63,21 @@ export const deleteEvent = async (eventId: string) => {
     return { success: true };
   } catch (error: any) {
     console.error("Greška pri brisanju događaja: ", error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * 5. KORAK - AŽURIRANJE (Update)
+ * Funkcija za izmjenu postojećeg događaja
+ */
+export const updateEvent = async (eventId: string, updatedData: any) => {
+  try {
+    const eventRef = doc(db, "events", eventId);
+    await updateDoc(eventRef, updatedData);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Greška pri ažuriranju:", error.message);
     return { success: false, error: error.message };
   }
 };
