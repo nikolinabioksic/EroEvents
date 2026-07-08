@@ -1,26 +1,27 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { doc, getDoc, getFirestore, updateDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { createEvent } from "../eventService";
 import { auth } from "../firebaseConfig";
 import { uploadEventPoster } from "../imageService";
 
-// Pomoćna funkcija koja izvlači prvi datum iz teksta i pretvara ga u broj za sortiranje (npr. 20260711)
+const db = getFirestore(auth.app);
+
 const generateSortDate = (dateStr: string) => {
   const match = dateStr.match(/(\d{1,2})\.(\d{1,2})\.?(\d{4})?/);
   if (match) {
@@ -29,26 +30,61 @@ const generateSortDate = (dateStr: string) => {
     const year = match[3] || new Date().getFullYear().toString();
     return parseInt(`${year}${month}${day}`, 10);
   }
-  return 99999999; // Ako nema datuma, stavi na dno liste
+  return 99999999;
 };
 
-const AddEventScreen = () => {
+const EditEventScreen = () => {
+  const { id } = useLocalSearchParams();
+  const router = useRouter();
+
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
-  const [time, setTime] = useState(""); // NOVO POLJE
+  const [time, setTime] = useState("");
   const [description, setDescription] = useState("");
-  const [eventLink, setEventLink] = useState(""); 
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [eventLink, setEventLink] = useState("");
   
-  const router = useRouter();
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchEventData = async () => {
+      if (!id) return;
+      try {
+        const docRef = doc(db, "events", id as string);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setTitle(data.title || "");
+          setLocation(data.location || "");
+          setDate(data.date || "");
+          setTime(data.time || ""); // Učitavanje vremena
+          setDescription(data.description || "");
+          setEventLink(data.eventLink || "");
+          setExistingImageUrl(data.imageUrl || null);
+        } else {
+          Alert.alert("Greška", "Događaj nije pronađen.");
+          router.back();
+        }
+      } catch (error) {
+        Alert.alert("Greška", "Nije moguće učitati podatke događaja.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEventData();
+  }, [id]);
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      Alert.alert("Dozvola odbijena", "Morate dopustiti pristup galeriji kako biste odabrali plakat.");
+      Alert.alert("Dozvola odbijena", "Morate dopustiti pristup galeriji.");
       return;
     }
 
@@ -60,65 +96,60 @@ const AddEventScreen = () => {
     });
 
     if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+      setImageUri(result.assets[0].uri); 
     }
   };
 
-  const handleAddEvent = async () => {
+  const handleUpdateEvent = async () => {
     if (!title || !location || !date || !time || !description) {
       Alert.alert("Greška", "Sva tekstualna polja (osim linka) su obavezna!");
       return;
     }
 
-    if (!imageUri) {
-      Alert.alert("Greška", "Molimo odaberite plakat za događaj!");
-      return;
-    }
-
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      Alert.alert("Greška", "Morate biti prijavljeni da biste dodali događaj.");
-      return;
-    }
-
-    setLoading(true);
+    setSaving(true);
 
     try {
-      const uploadedImageUrl = await uploadEventPoster(imageUri);
+      let finalImageUrl = existingImageUrl;
+      if (imageUri) {
+        finalImageUrl = await uploadEventPoster(imageUri);
+      }
 
-      const eventData = {
+      const docRef = doc(db, "events", id as string);
+      await updateDoc(docRef, {
         title,
         location,
         date,
         time,
-        sortDate: generateSortDate(date), // Spremanje broja za sortiranje u bazu
+        sortDate: generateSortDate(date),
         description,
-        eventLink, 
-        userId: currentUser.uid,
-        imageUrl: uploadedImageUrl,
-      };
+        eventLink,
+        imageUrl: finalImageUrl,
+      });
 
-      const result = await createEvent(eventData);
-      setLoading(false);
-
-      if (result.success) {
-        Alert.alert("Uspjeh", "Događaj je uspješno dodan s plakatom! 🎉");
-        setTitle("");
-        setLocation("");
-        setDate("");
-        setTime("");
-        setDescription("");
-        setEventLink("");
-        setImageUri(null);
-        router.replace("/(tabs)");
-      } else {
-        Alert.alert("Greška", result.error || "Došlo je do pogreške pri spremanju događaja.");
-      }
+      setSaving(false);
+      Alert.alert("Uspjeh", "Događaj je uspješno izmijenjen! ✅");
+      router.replace("/(tabs)");
     } catch (error: any) {
-      setLoading(false);
-      Alert.alert("Greška pri uploadu", "Nije uspjelo slanje slike na poslužitelj.");
+      setSaving(false);
+      Alert.alert("Greška", "Došlo je do pogreške pri ažuriranju događaja.");
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeContainer}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+            <Ionicons name="close" size={28} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color="#0A84FF" />
+          <Text style={{ color: "#FFF", marginTop: 10 }}>Učitavanje podataka...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -138,14 +169,12 @@ const AddEventScreen = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.header}>Dodaj novi događaj</Text>
-          <Text style={styles.subtitle}>Ispunite detalje za objavu</Text>
+          <Text style={styles.header}>Uredi događaj</Text>
+          <Text style={styles.subtitle}>Izmijenite detalje objave</Text>
 
           <Text style={styles.label}>Naziv događaja</Text>
           <TextInput
             style={styles.input}
-            placeholder="Npr. Koncert TS Forte, Brucošijada..."
-            placeholderTextColor="#8E8E93"
             value={title}
             onChangeText={setTitle}
           />
@@ -153,8 +182,6 @@ const AddEventScreen = () => {
           <Text style={styles.label}>Lokacija</Text>
           <TextInput
             style={styles.input}
-            placeholder="Npr. Viva, Mostar, Široki Brijeg..."
-            placeholderTextColor="#8E8E93"
             value={location}
             onChangeText={setLocation}
           />
@@ -164,8 +191,6 @@ const AddEventScreen = () => {
               <Text style={styles.label}>Datum(i)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Npr. 11.07.2026"
-                placeholderTextColor="#8E8E93"
                 value={date}
                 onChangeText={setDate}
               />
@@ -174,8 +199,6 @@ const AddEventScreen = () => {
               <Text style={styles.label}>Vrijeme</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Npr. 22:00h"
-                placeholderTextColor="#8E8E93"
                 value={time}
                 onChangeText={setTime}
               />
@@ -185,8 +208,6 @@ const AddEventScreen = () => {
           <Text style={styles.label}>Opis događaja</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Unesite detalje o događaju, ulaznicama..."
-            placeholderTextColor="#8E8E93"
             value={description}
             onChangeText={setDescription}
             multiline
@@ -196,8 +217,6 @@ const AddEventScreen = () => {
           <Text style={styles.label}>Link lokacije / Profil (Opcionalno)</Text>
           <TextInput
             style={styles.input}
-            placeholder="Npr. Instagram, Google Maps..."
-            placeholderTextColor="#8E8E93"
             value={eventLink}
             onChangeText={setEventLink}
             keyboardType="url"
@@ -207,24 +226,22 @@ const AddEventScreen = () => {
           <Text style={styles.label}>Plakat događaja</Text>
           <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
             <Ionicons name="images-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.imagePickerButtonText}>
-              {imageUri ? "Promijeni plakat" : "Odaberi plakat iz galerije"}
-            </Text>
+            <Text style={styles.imagePickerButtonText}>Promijeni plakat</Text>
           </TouchableOpacity>
 
-          {imageUri && (
+          {(imageUri || existingImageUrl) && (
             <View style={styles.previewContainer}>
-              <Image source={{ uri: imageUri }} style={styles.previewImage} />
+              <Image source={{ uri: imageUri || existingImageUrl || undefined }} style={styles.previewImage} />
             </View>
           )}
 
-          <TouchableOpacity style={styles.button} onPress={handleAddEvent} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color="#121212" />
+          <TouchableOpacity style={styles.button} onPress={handleUpdateEvent} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator color="#FFF" />
             ) : (
               <>
-                <Ionicons name="cloud-upload-outline" size={20} color="#121212" style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>Objavi događaj</Text>
+                <Ionicons name="checkmark-circle-outline" size={22} color="#FFF" style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>Spremi promjene</Text>
               </>
             )}
           </TouchableOpacity>
@@ -234,7 +251,7 @@ const AddEventScreen = () => {
   );
 }
 
-export default AddEventScreen;
+export default EditEventScreen;
 
 const styles = StyleSheet.create({
   safeContainer: { flex: 1, backgroundColor: "#121212" },
@@ -251,6 +268,6 @@ const styles = StyleSheet.create({
   imagePickerButtonText: { color: "#FFF", fontSize: 16, fontWeight: "600" },
   previewContainer: { alignItems: "center", marginBottom: 20, padding: 10, backgroundColor: "#1C1C1E", borderRadius: 16, borderWidth: 1, borderColor: "#2C2C2E" },
   previewImage: { width: "100%", height: 350, borderRadius: 8, resizeMode: "contain" },
-  button: { height: 56, backgroundColor: "#FFF", flexDirection: "row", justifyContent: "center", alignItems: "center", borderRadius: 12, marginTop: 10, marginBottom: 30 },
-  buttonText: { color: "#121212", fontSize: 18, fontWeight: "700" },
+  button: { height: 56, backgroundColor: "#0A84FF", flexDirection: "row", justifyContent: "center", alignItems: "center", borderRadius: 12, marginTop: 10, marginBottom: 30 },
+  buttonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
 });
