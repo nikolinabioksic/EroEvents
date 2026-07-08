@@ -190,7 +190,10 @@ export default function HomeScreen() {
   );
 
   const renderEventItem = ({ item }: { item: any }) => {
-    const isOwner = item.userId === currentUserId;
+    // SUPER ADMINISTRATOR LOGIKA
+    const ADMIN_UID = "54SPR8pYhiggLAOlwwVa37fLyMg1";
+    // Dozvola ako je korisnik kreator objave ILI ako je korisnik super admin
+    const hasAccess = item.userId === currentUserId || currentUserId === ADMIN_UID;
 
     return (
       <TouchableOpacity 
@@ -230,7 +233,8 @@ export default function HomeScreen() {
               <Text style={styles.actionButtonText}>Podijeli</Text>
             </TouchableOpacity>
 
-            {isOwner && (
+            {/* Prikaz gumba ako korisnik ima dozvolu (vlasnik ili admin) */}
+            {hasAccess && (
               <View style={styles.ownerActions}>
                 <TouchableOpacity 
                   style={styles.editButton} 
