@@ -19,7 +19,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     await logoutUser();
-    setUser(null); // Čistimo stanje nakon odjave
+    setUser(null); 
   };
 
   return (
