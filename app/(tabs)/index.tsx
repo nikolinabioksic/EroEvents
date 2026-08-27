@@ -10,13 +10,14 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   Share,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { deleteEvent, getEvents } from "../../eventService";
 import { auth } from "../../firebaseConfig";
 
@@ -25,7 +26,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [showPastEvents, setShowPastEvents] = useState(false); // NOVI STATE ZA TABOVE
+  const [showPastEvents, setShowPastEvents] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -165,7 +166,6 @@ export default function HomeScreen() {
     }
   };
 
-  // NOVA LOGIKA: Filtriranje i sortiranje ovisno o tabu
   const getDisplayedEvents = () => {
     const now = new Date().getTime();
     
@@ -177,7 +177,6 @@ export default function HomeScreen() {
           const day = parseInt(match[1]);
           const month = parseInt(match[2]) - 1;
           const year = match[3] ? parseInt(match[3]) : new Date().getFullYear();
-          // Postavljamo kraj dana (23:59:59) da događaj ostane vidljiv tijekom cijelog dana kada se događa
           const eventDate = new Date(year, month, day, 23, 59, 59).getTime();
           isPast = eventDate < now;
         }
@@ -185,8 +184,6 @@ export default function HomeScreen() {
       return showPastEvents ? isPast : !isPast;
     });
 
-    // Ako gledamo nadolazeće: sortiraj od najbližeg ka najdaljem (uzlazno)
-    // Ako gledamo prošle: sortiraj od najnovijeg ka najstarijem (silazno)
     return filtered.sort((a, b) => {
       return showPastEvents 
         ? (b.sortDate || 0) - (a.sortDate || 0) 
@@ -201,7 +198,6 @@ export default function HomeScreen() {
         <Text style={styles.infoText}>Aktualni događaji u Hercegovini</Text>
       </View>
 
-      {/* NOVI TABOVI ZA NAVIGACIJU */}
       <View style={styles.tabContainer}>
         <TouchableOpacity 
           style={[styles.tabButton, !showPastEvents && styles.activeTab]}
@@ -235,9 +231,7 @@ export default function HomeScreen() {
   );
 
   const renderEventItem = ({ item }: { item: any }) => {
-    // SUPER ADMINISTRATOR LOGIKA
     const ADMIN_UID = "54SPR8pYhiggLAOlwwVa37fLyMg1";
-    // Dozvola ako je korisnik kreator objave ILI ako je korisnik super admin
     const hasAccess = item.userId === currentUserId || currentUserId === ADMIN_UID;
 
     return (
@@ -299,7 +293,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={[styles.safeContainer, { paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 45 }]}>
       {loading ? (
         <ActivityIndicator size="large" color="#FFF" style={{ flex: 1 }} />
       ) : (
@@ -324,7 +318,6 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* MODAL ZA DETALJE DOGAĐAJA */}
       <Modal
         visible={!!selectedEvent}
         animationType="slide"
@@ -332,7 +325,7 @@ export default function HomeScreen() {
         onRequestClose={() => setSelectedEvent(null)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 50 }]}>
             <TouchableOpacity onPress={() => setSelectedEvent(null)} style={styles.closeButton}>
               <Ionicons name="close" size={28} color="#FFF" />
             </TouchableOpacity>
@@ -396,7 +389,7 @@ export default function HomeScreen() {
           )}
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -428,7 +421,6 @@ const styles = StyleSheet.create({
     color: "#8E8E93", 
     marginTop: 4,
   },
-  // STILOVI ZA NOVE TABOVE
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "#1C1C1E",
@@ -611,7 +603,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
-  
   modalContainer: {
     flex: 1,
     backgroundColor: "#121212",
