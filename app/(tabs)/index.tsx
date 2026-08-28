@@ -10,13 +10,14 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   Share,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { deleteEvent, getEvents } from "../../eventService";
 import { auth } from "../../firebaseConfig";
 
@@ -25,6 +26,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [showPastEvents, setShowPastEvents] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -38,9 +40,7 @@ export default function HomeScreen() {
     setLoading(true);
     const result = await getEvents();
     if (result.success && result.data) {
-      // SORTIRANJE DOGAĐAJA PO DATUMU (Od najbližeg do najdaljeg)
-      const sortedEvents = result.data.sort((a, b) => (a.sortDate || 0) - (b.sortDate || 0));
-      setEvents(sortedEvents);
+      setEvents(result.data);
     } else {
       Alert.alert("Greška", "Nije moguće učitati događaje.");
     }
@@ -166,11 +166,52 @@ export default function HomeScreen() {
     }
   };
 
+  const getDisplayedEvents = () => {
+    const now = new Date().getTime();
+    
+    const filtered = events.filter((item) => {
+      let isPast = false;
+      if (item.date) {
+        const match = item.date.match(/(\d{1,2})\.(\d{1,2})\.?(\d{4})?/);
+        if (match) {
+          const day = parseInt(match[1]);
+          const month = parseInt(match[2]) - 1;
+          const year = match[3] ? parseInt(match[3]) : new Date().getFullYear();
+          const eventDate = new Date(year, month, day, 23, 59, 59).getTime();
+          isPast = eventDate < now;
+        }
+      }
+      return showPastEvents ? isPast : !isPast;
+    });
+
+    return filtered.sort((a, b) => {
+      return showPastEvents 
+        ? (b.sortDate || 0) - (a.sortDate || 0) 
+        : (a.sortDate || 0) - (b.sortDate || 0);
+    });
+  };
+
   const renderListHeader = () => (
     <View style={styles.headerContainer}>
       <View style={styles.headerTextWrap}>
         <Text style={styles.welcomeText}>EroEvents</Text>
         <Text style={styles.infoText}>Aktualni događaji u Hercegovini</Text>
+      </View>
+
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, !showPastEvents && styles.activeTab]}
+          onPress={() => setShowPastEvents(false)}
+        >
+          <Text style={[styles.tabText, !showPastEvents && styles.activeTabText]}>Nadolazeći</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.tabButton, showPastEvents && styles.activeTab]}
+          onPress={() => setShowPastEvents(true)}
+        >
+          <Text style={[styles.tabText, showPastEvents && styles.activeTabText]}>Prošli događaji</Text>
+        </TouchableOpacity>
       </View>
 
       {currentUserId ? (
@@ -190,9 +231,7 @@ export default function HomeScreen() {
   );
 
   const renderEventItem = ({ item }: { item: any }) => {
-    // SUPER ADMINISTRATOR LOGIKA
     const ADMIN_UID = "54SPR8pYhiggLAOlwwVa37fLyMg1";
-    // Dozvola ako je korisnik kreator objave ILI ako je korisnik super admin
     const hasAccess = item.userId === currentUserId || currentUserId === ADMIN_UID;
 
     return (
@@ -233,7 +272,6 @@ export default function HomeScreen() {
               <Text style={styles.actionButtonText}>Podijeli</Text>
             </TouchableOpacity>
 
-            {/* Prikaz gumba ako korisnik ima dozvolu (vlasnik ili admin) */}
             {hasAccess && (
               <View style={styles.ownerActions}>
                 <TouchableOpacity 
@@ -255,12 +293,12 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={[styles.safeContainer, { paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 45 }]}>
       {loading ? (
         <ActivityIndicator size="large" color="#FFF" style={{ flex: 1 }} />
       ) : (
         <FlatList
-          data={events}
+          data={getDisplayedEvents()}
           keyExtractor={(item) => item.id}
           renderItem={renderEventItem}
           ListHeaderComponent={renderListHeader}
@@ -271,14 +309,15 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="file-tray-outline" size={48} color="#48484A" />
-              <Text style={styles.emptyText}>Trenutno nema objavljenih događaja.</Text>
+              <Ionicons name={showPastEvents ? "archive-outline" : "file-tray-outline"} size={48} color="#48484A" />
+              <Text style={styles.emptyText}>
+                {showPastEvents ? "Trenutno nema prošlih događaja." : "Trenutno nema nadolazećih događaja."}
+              </Text>
             </View>
           }
         />
       )}
 
-      {/* MODAL ZA DETALJE DOGAĐAJA */}
       <Modal
         visible={!!selectedEvent}
         animationType="slide"
@@ -286,7 +325,7 @@ export default function HomeScreen() {
         onRequestClose={() => setSelectedEvent(null)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 15 : 50 }]}>
             <TouchableOpacity onPress={() => setSelectedEvent(null)} style={styles.closeButton}>
               <Ionicons name="close" size={28} color="#FFF" />
             </TouchableOpacity>
@@ -350,7 +389,7 @@ export default function HomeScreen() {
           )}
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -369,7 +408,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTextWrap: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   welcomeText: { 
     fontSize: 32, 
@@ -381,6 +420,32 @@ const styles = StyleSheet.create({
     fontSize: 15, 
     color: "#8E8E93", 
     marginTop: 4,
+  },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#1C1C1E",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#2C2C2E",
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: "#2C2C2E",
+  },
+  tabText: {
+    color: "#8E8E93",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  activeTabText: {
+    color: "#FFF",
   },
   addButton: {
     width: "100%",
@@ -515,16 +580,16 @@ const styles = StyleSheet.create({
   },
   ownerActions: {
     flexDirection: "row",
-    gap: 12, // Razmak između olovke i kante
+    gap: 12,
   },
   editButton: {
     padding: 8,
-    backgroundColor: "rgba(10, 132, 255, 0.15)", // Plava boja za olovku
+    backgroundColor: "rgba(10, 132, 255, 0.15)",
     borderRadius: 8,
   },
   deleteButton: {
     padding: 8,
-    backgroundColor: "rgba(255, 69, 58, 0.15)", // Crvena boja za brisanje
+    backgroundColor: "rgba(255, 69, 58, 0.15)",
     borderRadius: 8,
   },
   emptyContainer: {
@@ -538,8 +603,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
-  
-  // MODAL STILOVI
   modalContainer: {
     flex: 1,
     backgroundColor: "#121212",
